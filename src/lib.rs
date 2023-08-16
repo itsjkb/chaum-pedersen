@@ -1,12 +1,12 @@
 use hex;
 use num_bigint::{BigUint, RandBigInt};
-use rand;
+use rand::Rng;
 
 pub struct ChaumPedersen {
-    p: BigUint,
-    q: BigUint,
-    alpha: BigUint,
-    beta: BigUint,
+    pub p: BigUint,
+    pub q: BigUint,
+    pub alpha: BigUint,
+    pub beta: BigUint,
 }
 
 impl ChaumPedersen {
@@ -60,6 +60,14 @@ impl ChaumPedersen {
     pub fn generate_random_below(bound: &BigUint) -> BigUint {
         let mut rng = rand::thread_rng();
         rng.gen_biguint_below(bound)
+    }
+
+    pub fn generate_random_string(size: usize) -> String {
+        rand::thread_rng()
+            .sample_iter(rand::distributions::Alphanumeric)
+            .take(size)
+            .map(char::from)
+            .collect()
     }
 
     pub fn get_constants() -> (BigUint, BigUint, BigUint, BigUint) {

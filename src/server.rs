@@ -102,7 +102,59 @@ impl Auth for AuthImpl {
         &self,
         request: Request<AuthenticationAnswerRequest>,
     ) -> Result<Response<AuthenticationAnswerResponse>, Status> {
-        todo!();
+        println!("AuthenticationAnswerRequest -> {:?}", request);
+
+        let request = request.into_inner();
+        let auth_id = request.auth_id;
+
+        println!(
+            "Processing Auth::create_authentication_challenge() for {}",
+            auth_id
+        );
+
+        let mut auth_id_to_user_hashmap = &mut self.auth_id_to_user.lock().unwrap();
+
+        if let Some(user_name) = auth_id_to_user_hashmap.get(&auth_id) {
+            let user_info_hashmap = &mut self.user_info.lock().unwrap();
+            let user_info = user_info_hashmap
+                .get_mut(user_name)
+                .expect("AuthId not found on hashmap");
+
+            let s = BigUint::from_bytes_be(&request.s);
+            user_info.solution = s;
+
+            let (alpha, beta, p, q) = ChaumPedersen::get_constants();
+            let zkp = ChaumPedersen { alpha, beta, p, q };
+
+            let verification = zkp.verify(
+                &user_info.r1,
+                &user_info.r2,
+                &user_info.y1,
+                &user_info.y2,
+                &user_info.challenge,
+                &user_info.solution,
+            );
+
+            if verification {
+                let session_id = ChaumPedersen::generate_random_string(12);
+
+                println!("✅ Correct Challenge Solution username: {:?}", user_name);
+
+                Ok(Response::new(AuthenticationAnswerResponse { session_id }))
+            } else {
+                println!("❌ Wrong Challenge Solution username: {:?}", user_name);
+
+                Err(Status::new(
+                    Code::PermissionDenied,
+                    format!("AuthId: {} bad solution to the challenge", auth_id),
+                ))
+            }
+        } else {
+            Err(Status::new(
+                Code::NotFound,
+                format!("AuthId: {} not found in database", auth_id),
+            ))
+        }
     }
 }
 
