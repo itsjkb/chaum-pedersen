@@ -5,13 +5,10 @@ pub mod nillion {
 use nmc_solution::ChaumPedersen;
 use num_bigint::BigUint;
 use std::io::stdin;
-use std::{collections::HashMap, sync::Mutex};
-use tonic::{transport::Server, Code, Request, Response, Status};
 
 use nillion::{
-    auth_client::AuthClient, AuthenticationAnswerRequest, AuthenticationAnswerResponse,
-    AuthenticationChallengeRequest, AuthenticationChallengeResponse, RegisterRequest,
-    RegisterResponse,
+    auth_client::AuthClient, AuthenticationAnswerRequest, AuthenticationChallengeRequest,
+    RegisterRequest,
 };
 
 #[tokio::main]
@@ -34,9 +31,11 @@ async fn main() {
     println!("Please provide password:");
     stdin()
         .read_line(&mut buf)
-        .expect("Unable to read username from user input");
+        .expect("Unable to read password from user input");
     let password = BigUint::from_bytes_be(buf.trim().as_bytes());
     buf.clear();
+
+    println!("\nPassword -> {}\n", password);
 
     let (alpha, beta, p, q) = ChaumPedersen::get_constants();
     let cp = ChaumPedersen {
@@ -65,15 +64,17 @@ async fn main() {
     println!("Please provide the password (to login):");
     stdin()
         .read_line(&mut buf)
-        .expect("Could not get the username from stdin");
+        .expect("Could not get the password (to login) from stdin");
     let password = BigUint::from_bytes_be(buf.trim().as_bytes());
     buf.clear();
 
+    println!("\nPassword -> {}\n", password);
+
     let k = ChaumPedersen::generate_random_below(&q);
-    let (r1, r2) = cp.compute_pair(&password);
+    let (r1, r2) = cp.compute_pair(&k);
 
     let request = AuthenticationChallengeRequest {
-        user: username.clone(),
+        user: username,
         r1: r1.to_bytes_be(),
         r2: r2.to_bytes_be(),
     };
@@ -85,15 +86,17 @@ async fn main() {
         .into_inner();
     println!(
         "Server Response for Authentication Challenge -> {:?}",
-        _response
+        response
     );
 
     let auth_id = response.auth_id;
     let challenge = BigUint::from_bytes_be(&response.c);
     let s = cp.solve(&k, &challenge, &password);
 
+    println!("[auth_id -> {}][challenge -> {}]", auth_id, challenge);
+
     let request = AuthenticationAnswerRequest {
-        auth_id: auth_id,
+        auth_id,
         s: s.to_bytes_be(),
     };
 
@@ -103,7 +106,7 @@ async fn main() {
         .expect("Unable to verify authentication.")
         .into_inner();
 
-    println!("✅Logging successful! session_id: {}", response.session_id);
+    println!("✅Login successful! session_id: {}", response.session_id);
     println!(
         "Server Response for Verify Authentication -> {:?}",
         response

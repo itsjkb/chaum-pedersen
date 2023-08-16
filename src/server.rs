@@ -52,6 +52,9 @@ impl Auth for AuthImpl {
             ..Default::default()
         };
 
+        println!("y1 -> {}", user_info.y1);
+        println!("y2 -> {}", user_info.y2);
+
         let user_info_hashmap = &mut self.user_info.lock().unwrap();
         user_info_hashmap.insert(username.clone(), user_info);
 
@@ -76,19 +79,25 @@ impl Auth for AuthImpl {
         let user_info_hashmap = &mut self.user_info.lock().unwrap();
 
         if let Some(user_info) = user_info_hashmap.get_mut(&username) {
+            println!("r1 -> {}", user_info.r1);
+            println!("r2 -> {}", user_info.r2);
+
+            let (_, _, _, q) = ChaumPedersen::get_constants();
+            let challenge = ChaumPedersen::generate_random_below(&q);
+            let auth_id = nanoid!();
+
+            user_info.challenge = challenge.clone();
             user_info.r1 = BigUint::from_bytes_be(&request.r1);
             user_info.r2 = BigUint::from_bytes_be(&request.r2);
 
-            let (_, _, _, q) = ChaumPedersen::get_constants();
-            let c = ChaumPedersen::generate_random_below(&q);
-            let auth_id = nanoid!();
+            println!("[auth_id -> {}][challenge -> {}]", auth_id, challenge);
 
             let auth_id_to_user = &mut self.auth_id_to_user.lock().unwrap();
             auth_id_to_user.insert(auth_id.clone(), username.clone());
 
             Ok(Response::new(AuthenticationChallengeResponse {
                 auth_id,
-                c: c.to_bytes_be(),
+                c: challenge.to_bytes_be(),
             }))
         } else {
             Err(Status::new(
@@ -112,7 +121,7 @@ impl Auth for AuthImpl {
             auth_id
         );
 
-        let mut auth_id_to_user_hashmap = &mut self.auth_id_to_user.lock().unwrap();
+        let auth_id_to_user_hashmap = &mut self.auth_id_to_user.lock().unwrap();
 
         if let Some(username) = auth_id_to_user_hashmap.get(&auth_id) {
             let user_info_hashmap = &mut self.user_info.lock().unwrap();
@@ -126,11 +135,18 @@ impl Auth for AuthImpl {
             let (alpha, beta, p, q) = ChaumPedersen::get_constants();
             let cp = ChaumPedersen { alpha, beta, p, q };
 
+            println!("------------------------------");
+            println!("y1 -> {}", user_info.y1);
+            println!("y2 -> {}", user_info.y2);
+            println!("r1 -> {}", user_info.r1);
+            println!("r2 -> {}", user_info.r2);
+            println!("------------------------------");
+
             let verification = cp.verify(
-                &user_info.r1,
-                &user_info.r2,
                 &user_info.y1,
                 &user_info.y2,
+                &user_info.r1,
+                &user_info.r2,
                 &user_info.challenge,
                 &user_info.solution,
             );

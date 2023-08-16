@@ -17,18 +17,12 @@ impl ChaumPedersen {
         (p1, p2)
     }
 
-    /// alpha^x mod p
-    /// output = n^exp mod p
-    pub fn exponentiate(n: &BigUint, exponent: &BigUint, modulus: &BigUint) -> BigUint {
-        n.modpow(exponent, modulus)
-    }
-
     /// output = s = k - c * x mod q
     pub fn solve(&self, k: &BigUint, c: &BigUint, x: &BigUint) -> BigUint {
         if *k >= c * x {
             return (k - c * x).modpow(&BigUint::from(1u32), &self.q);
         }
-        return &self.q - (c * x - k).modpow(&BigUint::from(1u32), &self.q);
+        &self.q - (c * x - k).modpow(&BigUint::from(1u32), &self.q)
     }
 
     /// r1 = alpha^s * y1^c
@@ -42,6 +36,10 @@ impl ChaumPedersen {
         c: &BigUint,
         s: &BigUint,
     ) -> bool {
+        let rhs1 = (&self.alpha.modpow(s, &self.p) * y1.modpow(c, &self.p))
+            .modpow(&BigUint::from(1u32), &self.p);
+        let rhs2 = (&self.beta.modpow(s, &self.p) * y2.modpow(c, &self.p))
+            .modpow(&BigUint::from(1u32), &self.p);
         let condition1 = *r1
             == (&self.alpha.modpow(s, &self.p) * y1.modpow(c, &self.p))
                 .modpow(&BigUint::from(1u32), &self.p);
@@ -49,6 +47,10 @@ impl ChaumPedersen {
             == (&self.beta.modpow(s, &self.p) * y2.modpow(c, &self.p))
                 .modpow(&BigUint::from(1u32), &self.p);
 
+        println!("y1 -> {}", y1);
+        println!("y2 -> {}", y2);
+        println!("rhs1 -> {}", rhs1);
+        println!("rhs2 -> {}", rhs2);
         println!("r1 -> {}", r1);
         println!("r2 -> {}", r2);
         println!("condition1 -> {}", condition1);
@@ -109,14 +111,12 @@ mod test {
             beta: beta.clone(),
         };
 
-        let y1 = ChaumPedersen::exponentiate(&alpha, &x, &p);
-        let y2 = ChaumPedersen::exponentiate(&beta, &x, &p);
+        let (y1, y2) = cp.compute_pair(&x);
 
         assert_eq!(y1, BigUint::from(2u32));
         assert_eq!(y2, BigUint::from(3u32));
 
-        let r1 = ChaumPedersen::exponentiate(&alpha, &k, &p);
-        let r2 = ChaumPedersen::exponentiate(&beta, &k, &p);
+        let (r1, r2) = cp.compute_pair(&k);
 
         assert_eq!(r1, BigUint::from(8u32));
         assert_eq!(r2, BigUint::from(4u32));
@@ -153,14 +153,12 @@ mod test {
             beta: beta.clone(),
         };
 
-        let y1 = ChaumPedersen::exponentiate(&alpha, &x, &p);
-        let y2 = ChaumPedersen::exponentiate(&beta, &x, &p);
+        let (y1, y2) = cp.compute_pair(&x);
 
         assert_eq!(y1, BigUint::from(2u32));
         assert_eq!(y2, BigUint::from(3u32));
 
-        let r1 = ChaumPedersen::exponentiate(&alpha, &k, &p);
-        let r2 = ChaumPedersen::exponentiate(&beta, &k, &p);
+        let (r1, r2) = cp.compute_pair(&k);
 
         let s = cp.solve(&k, &c, &x);
 
