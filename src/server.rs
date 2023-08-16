@@ -114,19 +114,19 @@ impl Auth for AuthImpl {
 
         let mut auth_id_to_user_hashmap = &mut self.auth_id_to_user.lock().unwrap();
 
-        if let Some(user_name) = auth_id_to_user_hashmap.get(&auth_id) {
+        if let Some(username) = auth_id_to_user_hashmap.get(&auth_id) {
             let user_info_hashmap = &mut self.user_info.lock().unwrap();
             let user_info = user_info_hashmap
-                .get_mut(user_name)
+                .get_mut(username)
                 .expect("AuthId not found on hashmap");
 
             let s = BigUint::from_bytes_be(&request.s);
             user_info.solution = s;
 
             let (alpha, beta, p, q) = ChaumPedersen::get_constants();
-            let zkp = ChaumPedersen { alpha, beta, p, q };
+            let cp = ChaumPedersen { alpha, beta, p, q };
 
-            let verification = zkp.verify(
+            let verification = cp.verify(
                 &user_info.r1,
                 &user_info.r2,
                 &user_info.y1,
@@ -136,13 +136,13 @@ impl Auth for AuthImpl {
             );
 
             if verification {
-                let session_id = ChaumPedersen::generate_random_string(12);
+                let session_id = nanoid!();
 
-                println!("✅ Correct Challenge Solution username: {:?}", user_name);
+                println!("✅ Correct Challenge Solution for username: {:?}", username);
 
                 Ok(Response::new(AuthenticationAnswerResponse { session_id }))
             } else {
-                println!("❌ Wrong Challenge Solution username: {:?}", user_name);
+                println!("❌ Wrong Challenge Solution for username: {:?}", username);
 
                 Err(Status::new(
                     Code::PermissionDenied,
