@@ -1,3 +1,5 @@
+use nanoid::nanoid;
+use nmc_solution::ChaumPedersen;
 use num_bigint::BigUint;
 use std::{collections::HashMap, sync::Mutex};
 use tonic::{transport::Server, Code, Request, Response, Status};
@@ -36,6 +38,8 @@ impl Auth for AuthImpl {
         &self,
         request: Request<RegisterRequest>,
     ) -> Result<Response<RegisterResponse>, Status> {
+        println!("RegisterRequest -> {:?}", request);
+
         let request = request.into_inner();
         let username = request.user;
 
@@ -60,7 +64,38 @@ impl Auth for AuthImpl {
         &self,
         request: Request<AuthenticationChallengeRequest>,
     ) -> Result<Response<AuthenticationChallengeResponse>, Status> {
-        todo!();
+        println!("AuthenticationChallengeRequest -> {:?}", request);
+
+        let request = request.into_inner();
+        let username = request.user;
+
+        println!(
+            "Processing Auth::create_authentication_challenge() for {}",
+            username
+        );
+        let user_info_hashmap = &mut self.user_info.lock().unwrap();
+
+        if let Some(user_info) = user_info_hashmap.get_mut(&username) {
+            user_info.r1 = BigUint::from_bytes_be(&request.r1);
+            user_info.r2 = BigUint::from_bytes_be(&request.r2);
+
+            let (_, _, _, q) = ChaumPedersen::get_constants();
+            let c = ChaumPedersen::generate_random_below(&q);
+            let auth_id = nanoid!();
+
+            let auth_id_to_user = &mut self.auth_id_to_user.lock().unwrap();
+            auth_id_to_user.insert(auth_id.clone(), username.clone());
+
+            Ok(Response::new(AuthenticationChallengeResponse {
+                auth_id,
+                c: c.to_bytes_be(),
+            }))
+        } else {
+            Err(Status::new(
+                Code::NotFound,
+                format!("User: {} not found!", username),
+            ))
+        }
     }
 
     async fn verify_authentication(
