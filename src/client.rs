@@ -35,8 +35,6 @@ async fn main() {
     let password = BigUint::from_bytes_be(buf.trim().as_bytes());
     buf.clear();
 
-    println!("\nPassword -> {}\n", password);
-
     let (alpha, beta, p, q) = ChaumPedersen::get_constants();
     let cp = ChaumPedersen {
         alpha: alpha.clone(),
@@ -67,8 +65,6 @@ async fn main() {
         .expect("Could not get the password (to login) from stdin");
     let password = BigUint::from_bytes_be(buf.trim().as_bytes());
     buf.clear();
-
-    println!("\nPassword -> {}\n", password);
 
     let k = ChaumPedersen::generate_random_below(&q);
     let (r1, r2) = cp.compute_pair(&k);

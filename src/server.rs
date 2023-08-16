@@ -52,9 +52,6 @@ impl Auth for AuthImpl {
             ..Default::default()
         };
 
-        println!("y1 -> {}", user_info.y1);
-        println!("y2 -> {}", user_info.y2);
-
         let user_info_hashmap = &mut self.user_info.lock().unwrap();
         user_info_hashmap.insert(username.clone(), user_info);
 
@@ -79,9 +76,6 @@ impl Auth for AuthImpl {
         let user_info_hashmap = &mut self.user_info.lock().unwrap();
 
         if let Some(user_info) = user_info_hashmap.get_mut(&username) {
-            println!("r1 -> {}", user_info.r1);
-            println!("r2 -> {}", user_info.r2);
-
             let (_, _, _, q) = ChaumPedersen::get_constants();
             let challenge = ChaumPedersen::generate_random_below(&q);
             let auth_id = nanoid!();
@@ -134,13 +128,6 @@ impl Auth for AuthImpl {
 
             let (alpha, beta, p, q) = ChaumPedersen::get_constants();
             let cp = ChaumPedersen { alpha, beta, p, q };
-
-            println!("------------------------------");
-            println!("y1 -> {}", user_info.y1);
-            println!("y2 -> {}", user_info.y2);
-            println!("r1 -> {}", user_info.r1);
-            println!("r2 -> {}", user_info.r2);
-            println!("------------------------------");
 
             let verification = cp.verify(
                 &user_info.y1,

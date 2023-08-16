@@ -47,15 +47,6 @@ impl ChaumPedersen {
             == (&self.beta.modpow(s, &self.p) * y2.modpow(c, &self.p))
                 .modpow(&BigUint::from(1u32), &self.p);
 
-        println!("y1 -> {}", y1);
-        println!("y2 -> {}", y2);
-        println!("rhs1 -> {}", rhs1);
-        println!("rhs2 -> {}", rhs2);
-        println!("r1 -> {}", r1);
-        println!("r2 -> {}", r2);
-        println!("condition1 -> {}", condition1);
-        println!("condition2 -> {}", condition2);
-
         condition1 && condition2
     }
 
